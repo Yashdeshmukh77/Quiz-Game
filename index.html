@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Quiz Master - Timed Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        :root { --accent: #6366f1; --bg: #0f172a; }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: #f8fafc; overflow-x: hidden; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-primary { background: var(--accent); transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5); }
+        .timer-warning { color: #f43f5e; animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .correct { background: #10b981 !important; border-color: #059669 !important; }
+        .wrong { background: #f43f5e !important; border-color: #e11d48 !important; }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="quiz-container" class="w-full max-w-2xl">
+        <!-- SCREEN: WELCOME (index.html) -->
+        <div id="screen-welcome" class="glass rounded-3xl p-10 text-center space-y-8 fade-in">
+            <div class="space-y-2">
+                <h1 class="text-6xl font-800 tracking-tight text-white">QUIZ<span class="text-indigo-500">PRO</span></h1>
+                <p class="text-slate-400 font-light text-lg">Challenge your mind against the clock.</p>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="player-name" placeholder="Enter Your Name" 
+                    class="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 text-center text-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                <button onclick="navigate('rules')" class="btn-primary w-full py-5 rounded-2xl font-bold text-xl uppercase tracking-widest">
+                    Start Mission
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN: RULES (rules.html) -->
+        <div id="screen-rules" class="glass rounded-3xl p-10 hidden space-y-6 fade-in">
+            <h2 class="text-3xl font-bold border-l-4 border-indigo-500 pl-4">Rules of Engagement</h2>
+            <div class="space-y-4 text-slate-300">
+                <p>• 3 Difficulty Rounds: <span class="text-green-400">Easy</span>, <span class="text-yellow-400">Medium</span>, <span class="text-red-400">Hard</span>.</p>
+                <p>• <strong>Timed Rounds:</strong> Points decrease as the timer counts down.</p>
+                <p>• <strong>Lives:</strong> You have 3 lives. Zero lives = Game Over.</p>
+                <p>• <strong>Streaks:</strong> Correct answers in a row grant bonus score multipliers.</p>
+            </div>
+            <button onclick="startQuiz()" class="btn-primary w-full py-4 rounded-xl font-bold">I'M READY</button>
+        </div>
+
+        <!-- SCREEN: QUIZ (quiz.html) -->
+        <div id="screen-quiz" class="glass rounded-3xl p-8 hidden space-y-6 fade-in">
+            <div class="flex justify-between items-center bg-slate-800/50 p-4 rounded-2xl border border-white/5">
+                <div id="lives-bar" class="text-rose-500 text-xl tracking-widest">❤️❤️❤️</div>
+                <div id="timer" class="text-3xl font-mono font-bold text-indigo-400">15s</div>
+                <div class="text-right">
+                    <span class="text-slate-500 text-xs block uppercase">Score</span>
+                    <span id="score-val" class="text-2xl font-bold">0</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div id="difficulty-tag" class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase bg-green-500/20 text-green-400">Easy Round</div>
+                <h3 id="question-text" class="text-2xl font-semibold leading-relaxed">Loading next challenge...</h3>
+            </div>
+
+            <div id="options-grid" class="grid gap-4">
+                <!-- Options injected here -->
+            </div>
+
+            <div class="flex justify-between items-center text-slate-500 text-sm italic">
+                <span id="streak-indicator" class="text-orange-400 font-bold hidden">🔥 3X STREAK</span>
+                <span id="progress-indicator">Question 1/5</span>
+            </div>
+        </div>
+
+        <!-- SCREEN: FEEDBACK (feedback.html) -->
+        <div id="screen-feedback" class="glass rounded-3xl p-10 hidden text-center space-y-4 fade-in">
+            <div id="feedback-icon" class="text-7xl">✅</div>
+            <h2 id="feedback-msg" class="text-4xl font-bold">Excellent!</h2>
+            <p id="points-earned" class="text-indigo-400 text-xl font-semibold">+0 Points</p>
+            <button onclick="proceedFromFeedback()" class="bg-slate-700 hover:bg-slate-600 px-10 py-3 rounded-xl transition-all">Next</button>
+        </div>
+
+        <!-- SCREEN: COMPLETION (round-completion.html) -->
+        <div id="screen-round-summary" class="glass rounded-3xl p-10 hidden text-center space-y-6 fade-in">
+            <h2 class="text-3xl font-bold text-indigo-400">Round Cleared!</h2>
+            <p id="round-stat-text" class="text-slate-300">You've mastered the Easy level. Next up: Medium.</p>
+            <button onclick="startNextRound()" class="btn-primary w-full py-4 rounded-xl font-bold">Start Next Round</button>
+        </div>
+
+        <!-- SCREEN: RESULT (result.html) -->
+        <div id="screen-result" class="glass rounded-3xl p-10 hidden text-center space-y-8 fade-in">
+            <h2 class="text-4xl font-extrabold tracking-tight">MISSION COMPLETE</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-800/80 p-6 rounded-2xl border border-white/5">
+                    <div class="text-slate-500 text-xs uppercase mb-1">Total Score</div>
+                    <div id="final-score" class="text-4xl font-bold text-indigo-400">0</div>
+                </div>
+                <div class="bg-slate-800/80 p-6 rounded-2xl border border-white/5">
+                    <div class="text-slate-500 text-xs uppercase mb-1">Accuracy</div>
+                    <div id="final-accuracy" class="text-4xl font-bold text-emerald-400">0%</div>
+                </div>
+            </div>
+            <div id="perf-level" class="text-xl font-bold text-indigo-300 italic">RANK: NOVICE</div>
+            <button onclick="location.reload()" class="w-full bg-slate-700 py-4 rounded-xl font-bold hover:bg-slate-600">RETRY MISSION</button>
+        </div>
+    </div>
+
+    <script>
+        // Mock Data for Frontend Logic (In real app, this is fetched from Spring Boot API)
+        const QUESTIONS = [
+            { id: 1, round: 1, difficulty: 'EASY', text: "Which protocol is used for secure web browsing?", options: ["HTTP", "FTP", "HTTPS", "SMTP"], correct: 2, time: 15 },
+            { id: 2, round: 1, difficulty: 'EASY', text: "What does HTML stand for?", options: ["High Text Markup Lang", "HyperText Markup Lang", "HyperTool Multi Lang", "None"], correct: 1, time: 15 },
+            { id: 3, round: 2, difficulty: 'MEDIUM', text: "Which Spring annotation maps a URL to a method?", options: ["@Autowired", "@Service", "@RequestMapping", "@Component"], correct: 2, time: 12 },
+            { id: 4, round: 2, difficulty: 'MEDIUM', text: "What is the default port for Spring Boot?", options: ["8080", "3306", "5432", "80"], correct: 0, time: 12 },
+            { id: 5, round: 3, difficulty: 'HARD', text: "In Hibernate, 'Lazy' fetching means?", options: ["Fetch immediately", "Fetch on demand", "Never fetch", "Fetch in background"], correct: 1, time: 8 }
+        ];
+
+        let state = {
+            name: "",
+            score: 0,
+            lives: 3,
+            streak: 0,
+            currentIdx: 0,
+            round: 1,
+            timer: 0,
+            timerId: null,
+            correctCount: 0
+        };
+
+        function navigate(to) {
+            if (to === 'rules') {
+                state.name = document.getElementById('player-name').value || "Cadet";
+            }
+            document.querySelectorAll('#quiz-container > div').forEach(div => div.classList.add('hidden'));
+            document.getElementById(`screen-${to}`).classList.remove('hidden');
+        }
+
+        function startQuiz() {
+            navigate('quiz');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = QUESTIONS[state.currentIdx];
+            document.getElementById('question-text').innerText = q.text;
+            document.getElementById('difficulty-tag').innerText = `${q.difficulty} Round`;
+            document.getElementById('progress-indicator').innerText = `Question ${state.currentIdx + 1}/${QUESTIONS.length}`;
+            
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "text-left p-5 rounded-2xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-all font-semibold";
+                btn.innerText = opt;
+                btn.onclick = () => selectOption(idx);
+                grid.appendChild(btn);
+            });
+
+            startTimer(q.time);
+        }
+
+        function startTimer(seconds) {
+            state.timer = seconds;
+            const el = document.getElementById('timer');
+            el.innerText = `${seconds}s`;
+            el.classList.remove('timer-warning');
+            
+            clearInterval(state.timerId);
+            state.timerId = setInterval(() => {
+                state.timer--;
+                el.innerText = `${state.timer}s`;
+                if (state.timer <= 5) el.classList.add('timer-warning');
+                if (state.timer <= 0) {
+                    clearInterval(state.timerId);
+                    selectOption(-1); // Timeout
+                }
+            }, 1000);
+        }
+
+        function selectOption(idx) {
+            clearInterval(state.timerId);
+            const q = QUESTIONS[state.currentIdx];
+            const isCorrect = idx === q.correct;
+            const btns = document.querySelectorAll('#options-grid button');
+
+            btns.forEach((btn, i) => {
+                btn.disabled = true;
+                if (i === q.correct) btn.classList.add('correct');
+                if (i === idx && !isCorrect) btn.classList.add('wrong');
+            });
+
+            setTimeout(() => showFeedback(isCorrect), 1200);
+        }
+
+        function showFeedback(isCorrect) {
+            const icon = document.getElementById('feedback-icon');
+            const msg = document.getElementById('feedback-msg');
+            const ptsText = document.getElementById('points-earned');
+
+            if (isCorrect) {
+                state.correctCount++;
+                state.streak++;
+                const bonus = Math.floor(state.timer * (state.streak * 0.5));
+                const earned = 50 + bonus;
+                state.score += earned;
+                icon.innerText = "✅";
+                msg.innerText = "CORRECT";
+                ptsText.innerText = `+${earned} Points (Time Bonus: ${bonus})`;
+            } else {
+                state.streak = 0;
+                state.lives--;
+                updateLives();
+                icon.innerText = "❌";
+                msg.innerText = "INCORRECT";
+                ptsText.innerText = "Health Depleted.";
+            }
+
+            document.getElementById('score-val').innerText = state.score;
+            document.getElementById('streak-indicator').classList.toggle('hidden', state.streak < 2);
+            document.getElementById('streak-indicator').innerText = `🔥 ${state.streak}X STREAK`;
+            navigate('feedback');
+        }
+
+        function updateLives() {
+            let h = "";
+            for(let i=0; i<3; i++) h += (i < state.lives) ? "❤️" : "🖤";
+            document.getElementById('lives-bar').innerText = h;
+        }
+
+        function proceedFromFeedback() {
+            if (state.lives <= 0) return endGame();
+            
+            const currentQ = QUESTIONS[state.currentIdx];
+            const nextQ = QUESTIONS[state.currentIdx + 1];
+
+            state.currentIdx++;
+            
+            if (!nextQ) return endGame();
+
+            if (nextQ.round > currentQ.round) {
+                document.getElementById('round-stat-text').innerText = `Next Round: ${nextQ.difficulty}`;
+                navigate('round-summary');
+            } else {
+                navigate('quiz');
+                loadQuestion();
+            }
+        }
+
+        function startNextRound() {
+            navigate('quiz');
+            loadQuestion();
+        }
+
+        function endGame() {
+            navigate('result');
+            document.getElementById('final-score').innerText = state.score;
+            const accuracy = Math.round((state.correctCount / QUESTIONS.length) * 100);
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+            
+            let rank = "NOVICE";
+            if (accuracy > 80) rank = "ELITE ARCHITECT";
+            else if (accuracy > 50) rank = "SYSTEMS ANALYST";
+            document.getElementById('perf-level').innerText = `RANK: ${rank}`;
+        }
+    </script>
+</body>
+                                                                                                          </html>
